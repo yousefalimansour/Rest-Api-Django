@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Product , Order, OrderItem
+from myapi import models
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -15,7 +16,6 @@ class ProductSerializer(serializers.ModelSerializer):
         if value <= 0:
             raise serializers.ValidationError("Price must be greater than 0")
         return value
-
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source = 'product.name')
@@ -35,6 +35,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
         )
 
 class OrderSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(read_only = True)
     items = OrderItemSerializer(many = True , read_only = True)
     total_price = serializers.SerializerMethodField(method_name = 'total')
     def total(self , obj):
