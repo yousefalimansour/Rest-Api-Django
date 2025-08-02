@@ -2,6 +2,22 @@ from pickle import PUT
 from typing import Self
 
 from django.db.models import Max
+<<<<<<< HEAD
+=======
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from myapi.serializers import ProductSerializer ,OrderSerializer , ProductInfoSerializer ,OrderCreateSerializer
+from myapi.models import Product , Order , OrderItem
+# from django.shortcuts import get_object_or_404
+from rest_framework import generics
+from rest_framework.views import APIView
+from rest_framework.generics import ListCreateAPIView
+from rest_framework.permissions import (
+    IsAuthenticated,
+    IsAdminUser,
+    AllowAny
+)
+>>>>>>> e89d01a5861f70aa44f1243ac08fc564831040ca
 from django_filters.rest_framework import DjangoFilterBackend
 # from django.shortcuts import get_object_or_404
 from myapi import serializers
@@ -33,6 +49,7 @@ class ProductListViewListCreateAPIView(ListCreateAPIView):
     search_fields = ['name','description']
     ordering_fields =['price','name','stock']
     pagination_class = LimitOffsetPagination
+
     # pagination_class.page_size = 2
     # pagination_class.page_query_param = 'pagenum'
     # pagination_class.page_size_query_param = 'size'
@@ -79,15 +96,26 @@ class OrderViewSet(viewsets.ModelViewSet):
     #     serializer = self.get_serializer(orders, many =True)
     #     return Response(serializer.data)
 
+
+    def perform_create(self,serializer):
+        serializer.save(user = self.request.user)
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return OrderCreateSerializer
+        return super().get_serializer_class()
+        
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.filter(user=self.request.user)
+
+
 # class UserOrderListView(generics.ListAPIView):
 #     queryset = Order.objects.prefetch_related('items__product')
 #     serializer_class = OrderSerializer
 #     permission_classes = [IsAuthenticated]
 
-#     def get_queryset(self):
-#         qs = super().get_queryset()
-#         return qs.filter(user=self.request.user)
-    
+
 class ProductInfoAPIView(APIView):
     def get(self , request):
         products = Product.objects.all()

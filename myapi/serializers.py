@@ -1,3 +1,6 @@
+from dataclasses import fields
+from pyclbr import Class
+from pyexpat import model
 from rest_framework import serializers
 from .models import Product , Order, OrderItem
 from myapi import models
@@ -34,6 +37,43 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'Item_Subtotal',
         )
 
+
+
+class OrderCreateSerializer(serializers.ModelSerializer):
+    class OrderItemCreateSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = OrderItem
+            fields = ('product','quantity')
+
+    id = serializers.UUIDField(read_only = True)
+    items = OrderItemCreateSerializer(many = True)
+
+    def create(self,validated_data):
+        orderitems_data = validated_data.pop('items')
+        order = Order.objects.create(**validated_data)
+
+        for item in orderitems_data:
+            OrderItem.objects.create(order = order , **item)
+        
+        return order
+
+    
+    class Meta:
+        model = Order
+        fields = (
+            'id',
+            'created_at',
+            'user',
+            'status',
+            'items',
+            )
+        extra_kwargs = {
+            'user': {'read_only': True}
+        }
+
+        
+
+
 class OrderSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(read_only = True)
     items = OrderItemSerializer(many = True , read_only = True)
@@ -52,6 +92,10 @@ class OrderSerializer(serializers.ModelSerializer):
             'items',
             'total_price',
         )
+
+
+
+
 
 class ProductInfoSerializer(serializers.Serializer):
     product = ProductSerializer(many = True)
