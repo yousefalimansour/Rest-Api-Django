@@ -36,6 +36,8 @@ from myapi.serializers import (OrderSerializer, ProductInfoSerializer,
                                ProductSerializer)
 
 from .filter import InStockFilter, ProductFilter,OrderFilter
+from django.views.decorators.vary import vary_on_header
+
 
 
 class ProductListViewListCreateAPIView(ListCreateAPIView):
@@ -91,6 +93,11 @@ class OrderViewSet(viewsets.ModelViewSet):
     filterset_class = OrderFilter
     filter_backends = [DjangoFilterBackend]
 
+    @method_decorator(cache_page(60*15, key_prefix='product_list'))
+    @method_decorator(vary_on_header("Authentication"))
+    def list(self,request,*args,**kwargs):
+        return super().list(request,*args,**kwargs)
+    
     def get_queryset(self):
         query = super().get_queryset()
         if not self.request.user.is_staff:
