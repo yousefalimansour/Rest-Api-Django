@@ -1,13 +1,15 @@
 from pickle import PUT
+from sys import prefix
 from typing import Self
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+
 from django.db.models import Max
-<<<<<<< HEAD
-=======
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from myapi.serializers import ProductSerializer ,OrderSerializer , ProductInfoSerializer ,OrderCreateSerializer
-from myapi.models import Product , Order , OrderItem
+from myapi.serializers import UserSerializer,ProductSerializer ,OrderSerializer , ProductInfoSerializer ,OrderCreateSerializer
+from myapi.models import Product , Order , OrderItem, User
 # from django.shortcuts import get_object_or_404
 from rest_framework import generics
 from rest_framework.views import APIView
@@ -17,7 +19,6 @@ from rest_framework.permissions import (
     IsAdminUser,
     AllowAny
 )
->>>>>>> e89d01a5861f70aa44f1243ac08fc564831040ca
 from django_filters.rest_framework import DjangoFilterBackend
 # from django.shortcuts import get_object_or_404
 from myapi import serializers
@@ -28,6 +29,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
 
 from myapi.models import Order, OrderItem, Product
 from myapi.serializers import (OrderSerializer, ProductInfoSerializer,
@@ -48,7 +50,16 @@ class ProductListViewListCreateAPIView(ListCreateAPIView):
     ]
     search_fields = ['name','description']
     ordering_fields =['price','name','stock']
-    pagination_class = LimitOffsetPagination
+    pagination_class = None
+
+    @method_decorator(cache_page(60*15, key_prefix='product_list'))
+    def list(self,request,*args,**kwargs):
+        return super().list(request,*args,**kwargs)
+    
+    def get_queryset(self):
+        import time 
+        time.sleep(2)
+        return super().get_queryset()
 
     # pagination_class.page_size = 2
     # pagination_class.page_query_param = 'pagenum'
@@ -76,7 +87,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.prefetch_related('items__product')
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
-    pagination_classes = None
+    pagination_class = None
     filterset_class = OrderFilter
     filter_backends = [DjangoFilterBackend]
 
@@ -101,7 +112,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer.save(user = self.request.user)
 
     def get_serializer_class(self):
-        if self.action == 'create':
+        if self.action == 'create' or self.action == 'update':
             return OrderCreateSerializer
         return super().get_serializer_class()
         
@@ -125,4 +136,10 @@ class ProductInfoAPIView(APIView):
             'max_price':products.aggregate(max_price = Max('price'))['max_price'],
         })
         return Response(serializer.data)  
+
+
+class UserAPIView(ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    pagination_class = None
 

@@ -1,9 +1,21 @@
+from asyncio.windows_events import NULL
+from turtle import mode
+from django.db import transaction
 from dataclasses import fields
 from pyclbr import Class
 from pyexpat import model
 from rest_framework import serializers
-from .models import Product , Order, OrderItem
+from .models import Product , Order, OrderItem, User
 from myapi import models
+
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('password', 'user_permissions', 'is_authenticated', 'get_full_name', 'orders')
+
+
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -48,13 +60,25 @@ class OrderCreateSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(read_only = True)
     items = OrderItemCreateSerializer(many = True)
 
+    def update(self,instance,validated_data):
+        orderitems_data = validated_data.pop('items')
+        with transaction.atomic():
+            instance = super().update(instance,validated_data)
+            if orderitems_data is not None:
+                instance.items.all().delete()
+
+                for item in orderitems_data:
+                    OrderItem.objects.create(order = instance, **item)
+        return instance
+
     def create(self,validated_data):
         orderitems_data = validated_data.pop('items')
-        order = Order.objects.create(**validated_data)
+        with transaction.atomic():    
+            order = Order.objects.create(**validated_data)
 
-        for item in orderitems_data:
-            OrderItem.objects.create(order = order , **item)
-        
+            for item in orderitems_data:
+                OrderItem.objects.create(order = order , **item)
+            
         return order
 
     
