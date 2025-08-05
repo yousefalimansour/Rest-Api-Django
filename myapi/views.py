@@ -36,7 +36,9 @@ from myapi.serializers import (OrderSerializer, ProductInfoSerializer,
                                ProductSerializer)
 
 from .filter import InStockFilter, ProductFilter,OrderFilter
-from django.views.decorators.vary import vary_on_header
+from django.views.decorators.vary import vary_on_headers
+from rest_framework.throttling import ScopedRateThrottle
+
 
 
 
@@ -44,15 +46,18 @@ class ProductListViewListCreateAPIView(ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     filterset_class = ProductFilter
+    permission_classes = [IsAuthenticated]
     filter_backends = [
         DjangoFilterBackend,
         InStockFilter,
         filters.OrderingFilter,
         filters.SearchFilter,       
     ]
+
     search_fields = ['name','description']
     ordering_fields =['price','name','stock']
     pagination_class = None
+    throttle_scope = 'products'
 
     @method_decorator(cache_page(60*15, key_prefix='product_list'))
     def list(self,request,*args,**kwargs):
@@ -88,13 +93,14 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.prefetch_related('items__product')
     serializer_class = OrderSerializer
+    throttle_scope = 'orders'
     permission_classes = [IsAuthenticated]
     pagination_class = None
     filterset_class = OrderFilter
     filter_backends = [DjangoFilterBackend]
 
-    @method_decorator(cache_page(60*15, key_prefix='product_list'))
-    @method_decorator(vary_on_header("Authentication"))
+    @method_decorator(cache_page(60*15, key_prefix='order_list'))
+    @method_decorator(vary_on_headers("Authentication"))
     def list(self,request,*args,**kwargs):
         return super().list(request,*args,**kwargs)
     
